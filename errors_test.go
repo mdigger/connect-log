@@ -6,10 +6,10 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"reflect"
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/stretchr/testify/require"
 )
 
 type detailedError struct {
@@ -126,19 +126,34 @@ func TestNewLoggableError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := newLoggableError(tt.input)
 			if tt.input == nil {
-				require.Nil(t, err)
+				if err != nil {
+					t.Errorf("expected nil error, got %v", err)
+				}
 				return
 			}
 
-			require.NotNil(t, err)
-			require.Equal(t, tt.expected.code, err.Code())
-			require.Equal(t, tt.expected.message, err.Message())
+			if err == nil {
+				t.Fatal("expected non-nil error")
+			}
+
+			if got := err.Code(); got != tt.expected.code {
+				t.Errorf("expected code %v, got %v", tt.expected.code, got)
+			}
+
+			if got := err.Message(); got != tt.expected.message {
+				t.Errorf("expected message %q, got %q", tt.expected.message, got)
+			}
 
 			logValue := err.LogValue()
+			groupLen := len(logValue.Group())
 			if tt.expected.details {
-				require.Greater(t, len(logValue.Group()), 2) // code + message + details
+				if groupLen <= 2 {
+					t.Errorf("expected more than 2 attributes in log value, got %d", groupLen)
+				}
 			} else {
-				require.Len(t, logValue.Group(), 2) // just code + message
+				if groupLen != 2 {
+					t.Errorf("expected exactly 2 attributes in log value, got %d", groupLen)
+				}
 			}
 		})
 	}
@@ -152,35 +167,52 @@ func TestLoggableError_LogValue(t *testing.T) {
 		})
 
 		attrs := err.LogValue().Group()
-		require.Len(t, attrs, 4) // code + message + field + reason
+		if len(attrs) != 4 {
+			t.Fatalf("expected 4 attributes, got %d", len(attrs))
+		}
 
 		var foundField, foundReason bool
 		for _, attr := range attrs {
 			switch attr.Key {
 			case "field":
-				require.Equal(t, "password", attr.Value.String())
+				if attr.Value.String() != "password" {
+					t.Errorf("expected field 'password', got %q", attr.Value.String())
+				}
 				foundField = true
 			case "reason":
-				require.Equal(t, "too short", attr.Value.String())
+				if attr.Value.String() != "too short" {
+					t.Errorf("expected reason 'too short', got %q", attr.Value.String())
+				}
 				foundReason = true
 			}
 		}
-		require.True(t, foundField)
-		require.True(t, foundReason)
+		if !foundField {
+			t.Error("field attribute not found")
+		}
+		if !foundReason {
+			t.Error("reason attribute not found")
+		}
 	})
 
 	t.Run("nil error", func(t *testing.T) {
 		var err *loggableError
-		require.Equal(t, slog.Value{}, err.LogValue())
+		if got := err.LogValue(); !reflect.DeepEqual(got, slog.Value{}) {
+			t.Errorf("expected empty slog.Value, got %v", got)
+		}
 	})
 }
 
 func TestErrorReuse(t *testing.T) {
 	// Verify we reuse the same instances for context errors
-	require.Same(t,
-		newLoggableError(context.Canceled),
-		newLoggableError(context.Canceled))
-	require.Same(t,
-		newLoggableError(context.DeadlineExceeded),
-		newLoggableError(os.ErrDeadlineExceeded))
+	err1 := newLoggableError(context.Canceled)
+	err2 := newLoggableError(context.Canceled)
+	if err1 != err2 {
+		t.Error("expected same instance for context.Canceled")
+	}
+
+	err3 := newLoggableError(context.DeadlineExceeded)
+	err4 := newLoggableError(os.ErrDeadlineExceeded)
+	if err3 != err4 {
+		t.Error("expected same instance for deadline exceeded errors")
+	}
 }
