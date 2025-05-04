@@ -14,17 +14,17 @@ import (
 // ContextLogFunc defines a function type that extracts additional log attributes from context.
 type ContextLogFunc func(context.Context) []slog.Attr
 
-// LoggingInterceptor implements ConnectRPC interceptors for structured logging.
-type LoggingInterceptor struct {
+// loggingInterceptor implements ConnectRPC interceptors for structured logging.
+type loggingInterceptor struct {
 	logger        *slog.Logger
 	redactHeaders []string
 	contextLogFn  ContextLogFunc
 }
 
-// var _ connect.Interceptor = (*LoggingInterceptor)(nil)
+var _ connect.Interceptor = (*loggingInterceptor)(nil)
 
-// NewLoggingInterceptor creates a new logging interceptor instance.
-func NewLoggingInterceptor(opts ...Option) *LoggingInterceptor {
+// New creates a new logging interceptor instance.
+func New(opts ...Option) connect.Interceptor {
 	options := Options{
 		Logger:        slog.Default(),
 		RedactHeaders: []string{"authorization", "token"},
@@ -39,7 +39,7 @@ func NewLoggingInterceptor(opts ...Option) *LoggingInterceptor {
 		options.Logger = slog.New(slog.DiscardHandler)
 	}
 
-	return &LoggingInterceptor{
+	return &loggingInterceptor{
 		logger:        options.Logger,
 		redactHeaders: options.RedactHeaders,
 		contextLogFn:  options.ContextLogFn,
@@ -47,7 +47,7 @@ func NewLoggingInterceptor(opts ...Option) *LoggingInterceptor {
 }
 
 // initRequestLogger initializes the base logger with common request attributes
-func (i *LoggingInterceptor) initRequestLogger(ctx context.Context, spec connect.Spec, peer connect.Peer) *slog.Logger {
+func (i *loggingInterceptor) initRequestLogger(ctx context.Context, spec connect.Spec, peer connect.Peer) *slog.Logger {
 	procedure := strings.TrimPrefix(spec.Procedure, "/")
 	idx := strings.Index(procedure, "/")
 	service, method := procedure[:idx], procedure[idx+1:]
@@ -70,7 +70,7 @@ func (i *LoggingInterceptor) initRequestLogger(ctx context.Context, spec connect
 }
 
 // WrapUnary implements unary request/response logging middleware.
-func (i *LoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+func (i *loggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		start := time.Now()
 		logger := i.initRequestLogger(ctx, req.Spec(), req.Peer())
@@ -131,7 +131,7 @@ func (i *LoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 }
 
 // WrapStreamingHandler implements streaming request logging middleware.
-func (i *LoggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (i *loggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		start := time.Now()
 		logger := i.initRequestLogger(ctx, conn.Spec(), conn.Peer())
@@ -173,4 +173,10 @@ func (i *LoggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerF
 
 		return err
 	}
+}
+
+func (i *loggingInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return connect.StreamingClientFunc(func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
+		return next(ctx, spec)
+	})
 }
