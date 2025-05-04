@@ -73,7 +73,7 @@ func (i *LoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 		// Debug logging for request start with headers and body
 		if logger.Enabled(ctx, slog.LevelDebug) {
 			headers := redactHeadersMap(req.Header(), i.redactHeaders)
-			logger.Debug("request started",
+			logger.DebugContext(ctx, "request started",
 				slog.Any("request", req.Any()),
 				slog.Any("headers", headers),
 			)
@@ -107,7 +107,7 @@ func (i *LoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 			// Debug logging for response with headers
 			if logger.Enabled(ctx, slog.LevelDebug) {
 				headers := redactHeadersMap(res.Header(), i.redactHeaders)
-				logger.Debug("response completed",
+				logger.DebugContext(ctx, "response completed",
 					slog.Any("response", res.Any()),
 					slog.Any("headers", headers),
 				)
@@ -118,7 +118,7 @@ func (i *LoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 				logAttrs = append(logAttrs, slog.Int("response_size", resSize))
 			}
 
-			logger.Info("request completed", logAttrs...)
+			logger.InfoContext(ctx, "request completed", logAttrs...)
 		}
 
 		return res, err
@@ -134,7 +134,7 @@ func (i *LoggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerF
 		// Debug logging for stream start with headers
 		if logger.Enabled(ctx, slog.LevelDebug) {
 			headers := redactHeadersMap(conn.RequestHeader(), i.redactHeaders)
-			logger.Debug("stream started",
+			logger.DebugContext(ctx, "stream started",
 				slog.Any("headers", headers),
 			)
 		}
@@ -158,12 +158,12 @@ func (i *LoggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerF
 			logAttrs = append(logAttrs, slog.Any("error", connErr))
 
 			if connErr.Code() < connect.CodeInternal {
-				logger.Warn("stream failed", logAttrs...)
+				logger.WarnContext(ctx, "stream failed", logAttrs...)
 			} else {
-				logger.Error("stream failed", logAttrs...)
+				logger.ErrorContext(ctx, "stream failed", logAttrs...)
 			}
 		} else {
-			logger.Info("stream completed", logAttrs...)
+			logger.InfoContext(ctx, "stream completed", logAttrs...)
 		}
 
 		return err
