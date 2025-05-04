@@ -35,6 +35,7 @@ func (c *loggedStreamConn) Send(msg any) error {
 		c.logger.Debug("stream message sent",
 			slog.Int("number", c.sentCount),
 			slog.Int("size", calculateSize(msg)),
+			slog.Any("response", msg),
 		)
 	}
 	return nil
@@ -50,6 +51,7 @@ func (c *loggedStreamConn) Receive(msg any) error {
 		c.logger.Debug("stream message received",
 			slog.Int("number", c.receivedCount),
 			slog.Int("size", calculateSize(msg)),
+			slog.Any("receive", msg),
 		)
 	}
 
