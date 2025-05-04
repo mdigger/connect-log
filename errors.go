@@ -73,7 +73,8 @@ func (e *loggableError) LogValue() slog.Value {
 		origErr = e.Error
 	}
 
-	if logValuer, ok := origErr.(slog.LogValuer); ok {
+	var logValuer slog.LogValuer
+	if errors.As(origErr, &logValuer) {
 		logValue := logValuer.LogValue()
 		switch logValue.Kind() {
 		case slog.KindGroup:
