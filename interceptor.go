@@ -34,6 +34,11 @@ func NewLoggingInterceptor(opts ...Option) *LoggingInterceptor {
 		opt(&options)
 	}
 
+	// disable logging
+	if options.Logger == nil {
+		options.Logger = slog.New(slog.DiscardHandler)
+	}
+
 	return &LoggingInterceptor{
 		logger:        options.Logger,
 		redactHeaders: options.RedactHeaders,
