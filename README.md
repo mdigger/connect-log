@@ -25,10 +25,10 @@ import (
 )
 
 // Basic usage
-interceptor := connectlog.NewLoggingInterceptor()
+interceptor := connectlog.New()
 
 // With options
-interceptor := connectlog.NewLoggingInterceptor(
+interceptor := connectlog.New(
 	connectlog.WithLogger(slog.Default()),
 	connectlog.WithRedactHeaders([]string{"token"}),
 	connectlog.WithContextLogFn(func(ctx context.Context) []slog.Attr {
