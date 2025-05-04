@@ -13,7 +13,7 @@ A structured logging interceptor for ConnectRPC with rich features:
 ## Installation
 
 ```sh
-go get github.com/mdigger/connectlog
+go get github.com/mdigger/connect-log
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ go get github.com/mdigger/connectlog
 ```go
 import (
 	"log/slog"
-	"github.com/mdigger/connectlog"
+	"github.com/mdigger/connect-log"
 )
 
 // Basic usage

@@ -1,4 +1,4 @@
-module github.com/mdigger/connectlog
+module github.com/mdigger/connect-log
 
 go 1.24.2
 
